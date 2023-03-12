@@ -38,7 +38,7 @@
 #include "ntreg.h"
 
 
-const char reged_version[] = "reged version 0.1 140201, (c) Petter N Hagen";
+const char reged_version[] = "reged version 0.1 140201, (c) Petter N Hagen, patch by DimanKuskov";
 
 
 /* Global verbosity flag */
