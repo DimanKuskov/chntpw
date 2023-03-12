@@ -3724,6 +3724,7 @@ int de_escape(char *s, int wide)
  * First byte of buffer is value type.
  * returns lenght
  *
+"valuetoberemoved"=-
 "stringvalue"="this is a string"
 "binaryvalue"=hex:11,22,33,aa,bb,cc,12,34,01,02,ab,cd,ef,be,ef
 "dwordvalue"=dword:12345678
@@ -3751,8 +3752,10 @@ int parse_valuestring(char *s, char *w, int len, int wide, struct keyval **kvptr
   
 
   //  printf("parse_val: input string: <%s>\n",s);
-
-  if (!strncmp(s,"dword",4)) {  /* DWORD */
+  
+  if(!strcmp(s, "-")) {
+    type = -1;  
+  } else if (!strncmp(s,"dword",4)) {  /* DWORD */
     sscanf(s,"dword:%x",&dword);
     //    printf("parse_vals: dword is %x\n",dword);
     type = REG_DWORD;
@@ -3959,12 +3962,12 @@ void import_reg(struct hive *hdesc, char *filename, char *prefix)
 	 //	 printf("import_reg: got value type = %d\n",type);
 	 //      printf("import_reg: data lenght    = %d\n",(*valbinbuf).len);
 
-	 VERBF(hdesc,"  Value <%s> of type %d length %d",valname,type,(*valbinbuf).len);
+	 VERBF(hdesc,"  Value <%s> of type %d length %d",valname,type, valbinbuf ? (*valbinbuf).len : 0);
 
 	 oldtype = get_val_type(hdesc, nk + 4, valname, TPF_VK_ABS|TPF_EXACT);
 
 
-	 if (oldtype == -1) {
+	 if (oldtype == -1 && type != -1) {
 	   //	   printf("Value <%s> not found, creating it new\n",valname);
 	   plainname = str_dup(valname);
 	   de_escape(plainname,0);
@@ -3976,18 +3979,34 @@ void import_reg(struct hive *hdesc, char *filename, char *prefix)
 
 	 }
 
+	 if (oldtype != -1 && type == -1) {
+	   //	   printf("Value <%s> found and should be removed\n",valname);
+	   plainname = str_dup(valname);
+	   de_escape(plainname,0);
+	   // printf("de-escaped to <%s> removing it\n",plainname);
+	   del_value(hdesc, nk + 4, plainname, 0);
+	   oldtype = get_val_type(hdesc, nk + 4, valname, TPF_VK_ABS|TPF_EXACT);
+	   FREE(plainname);
+	   VERB(hdesc," [REMOVED]");
+	 }
+
 	 if (oldtype != type) {
 	   fprintf(stderr,"ERROR: import_reg: unable to change value <%s>, new type is %d while old is %d\n",valname,type,oldtype);
 	   bailout = 1;
 	 } else {
 
 	   VERB(hdesc,"\n");
-	   put_buf2val(hdesc, valbinbuf, nk + 4, valname, type, TPF_VK_ABS|TPF_EXACT);
+	   if(type != -1) {
+	     put_buf2val(hdesc, valbinbuf, nk + 4, valname, type, TPF_VK_ABS|TPF_EXACT);
+	   }
 	   
 	   numkeyvals++;
 	   numtotvals++;
 	   
-	   FREE(valbinbuf);
+	   if(valbinbuf) {
+	     FREE(valbinbuf);
+	     valbinbuf = NULL;
+	   }
 	   FREE(valstr);
 	   FREE(valname);
 	   FREE(walstr);
